@@ -1,4 +1,4 @@
-name: 3101_proj
+name: proj_DSA4265
 channels:
   - conda-forge
   - defaults
@@ -64,4 +64,5 @@ dependencies:
     - selenium
     - accelerate>=0.26.0
     - pinecone-client
+    - py2neo
     
