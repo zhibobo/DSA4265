@@ -118,7 +118,7 @@ class Reranker:
         # Sort contexts by score in descending order
         ranked_contexts = sorted(scores, key=lambda x: x[1], reverse=True)
 
-        return ranked_contexts[:self.top_k]
+        return [context[0] for context in ranked_contexts[:self.top_k]]
 
 
 if __name__ == "__main__":
@@ -132,4 +132,11 @@ if __name__ == "__main__":
 
     reranker = Reranker(top_k=10)
     #Run the line below to see the output for the whole flow
-    #print(reranker.rerank(sample_query,appended_chunks))
+    print(reranker.rerank(sample_query,appended_chunks))
+
+    """
+    Some findings:
+    - The hops function should work. There is an increase in the length of chunk after appending, but validation not done to see if appended the correct neighbours
+    - Reranking does change the sequence of the top_k, based on the sample query.
+    """
+    
