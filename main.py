@@ -3,8 +3,8 @@ from ba_data_extraction.banking_act_preprocessor.py import BankingActPreprocesso
 from graphdb.GraphDB import GraphDB 
 from PineconeUploader import PineconeUploader
 from scripts.fact_reasoning_agent import classify_query
-
-
+from classify_query import QueryClassifierAgent
+from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 
 
 def main(): 
@@ -30,13 +30,21 @@ def main():
 
     ## 3a. Determine Banking Act/MAS query Agent 
 
-    ## 3b. Determine fact or reasoning query Agent
-    fact_reasoning_output = classify_query()
+    ## 3b. Determine fact or reasoning query Agent. Returns 'Factual' or 'Reasoning' only. 
+    query_classifier_agent = QueryClassifierAgent()
+    query_classifier_output = query_classifier_agent.classify_query(query) 
 
-    ## 4a. Retrieve top chunk with references Agent 
+    ## 4a. Retrieve top chunk with references Agent, set as 1 nearest neighbour (1 hop) 
+    vectorretriever = VectorDbRetriever(top_k=10)
+    top_k_chunks = vectorretriever.get_top_k_chunks(query, 'ba')
 
-    ## 4b. Rerankers 
+    graphretriever = GraphDbRetriever(top_k=10, hops=1)
+    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
+    ## 4b Rerank top chunks with references
+    reranker = Reranker(top_k=10)
+    reranked_chunks = reranker.rerank(sample_query,appended_chunks)
+ 
     ## 4c. Summary Agent 
 
     ## 5. Identify & Ask for additional user input Agent 
