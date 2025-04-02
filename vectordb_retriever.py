@@ -22,7 +22,13 @@ class VectorDbRetriever:
         self.client = openai.OpenAI(api_key=self.openai_key)
 
     def get_top_k_chunks(self, query, index_name):
-        #embed the query with same embedding as vectordb
+        """
+        Takes user input query and get the top_k_chunks(context) with the highest similarity score from vector db
+
+        :query: String from front end
+        :index_name:  fixed string field('ba' or 'mas')
+        :return: list of chunk_id corresponding to the top_k_chunks
+        """
         embedded_query = self.client.embeddings.create(
             input = query,
             model = "text-embedding-3-small"
@@ -54,12 +60,24 @@ class GraphDbRetriever:
                        'mas': GraphDatabase.driver(self.uri['mas'], auth=self.auth['mas'])}
 
     def get_neighbours(self, chunk_id, index_name):
-        cypher_query = f"""
+        """
+        Takes one chunk id to query graph db and get all neighbours of n hops, append all their text into one
+
+        :chunk_id: string. (eg. 'ba-1970-15b.1')
+        :index_name:  fixed string field('ba' or 'mas')
+        :return: string that contains chunk's text + all queried neighbour's text
+        """
+        #edit the queries below for ba and mas index respectively
+        cypher_query = {'ba': f"""
         MATCH (n {{id: $chunk_id}})-[:REFERS_TO*1..{self.hops}]-(m)
         RETURN DISTINCT n,m
-        """
+        """,
+        'mas': f"""
+        MATCH (n {{id: $chunk_id}})-[:REFERRED_BY*1..{self.hops}]-(m)
+        RETURN DISTINCT n,m
+        """}
         with self.driver[index_name].session() as session:
-            result = session.run(cypher_query, chunk_id=chunk_id)
+            result = session.run(cypher_query[index_name], chunk_id=chunk_id)
             graph = []
             retrieved_context = ""
             for record in result:
@@ -74,6 +92,14 @@ class GraphDbRetriever:
             return retrieved_context
         
     def get_appended_chunks(self, top_k_chunks, index_name):
+        """
+        Iterates list of top_k_chunk ids to query the graph db. outputs the list of top_k_chunks with their text appended with 
+        neighbouring node's text
+        
+        :top_k_chunks: list of chunk ids
+        :index_name:  fixed string field('ba' or 'mas')
+        :return: list of appended top_k_chunk's text (list of strings)
+        """
         appended_top_k = []
         for chunk in top_k_chunks:
             appended_chunk = self.get_neighbours(chunk, index_name)
