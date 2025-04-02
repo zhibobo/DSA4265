@@ -49,15 +49,17 @@ class GraphDB:
                     SET s.text_id = $text_id, s.text = $text
                 """, text_id=text_id, text=text) 
     
-                # Create undirected relationships (current section → references)
+                # Create directed relationships (current section → references)
                 # MERGE (s1)-[:REFERS_TO]->(s2)
                 # MERGE (s2)-[:REFERRED_BY]->(s1) 
                 
+                # Create undirected relationships (current section → references)
                 for ref_id in references:
                     session.run("""
                         MERGE (s1:Section {id: $text_id})
                         MERGE (s2:Section {id: $ref_id})
-                        MERGE (s1)-[:REFERS_TO]-(s2)
+                        MERGE (s1)-[:REFERS_TO]->(s2)
+                        MERGE (s2)-[:REFERRED_BY]->(s1)
                         
                     """, text_id=text_id, ref_id=ref_id)
     
@@ -76,15 +78,10 @@ class GraphDB:
     
             # Fetch edges
             edges = session.run("""
-                MATCH (a:Section)-[:REFERS_TO]-(b:Section)
+                MATCH (a:Section)-[:REFERS_TO]->(b:Section)
                 RETURN a.id AS source, b.id AS target
                 LIMIT 10
             """)
-            # edges = session.run("""
-            #     MATCH (a:Section)-[r:REFERS_TO]->(b:Section)
-            #     RETURN a.id , b.id
-            #     LIMIT 20
-            # """)
 
             for record in edges:
                 G.add_edge(record["source"], record["target"])
