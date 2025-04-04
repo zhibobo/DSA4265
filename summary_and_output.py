@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import openai
 from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
+from source_router import SourceRouterAgent
 
 load_dotenv()
 
@@ -59,11 +60,14 @@ if __name__ == "__main__":
     print("Classification:", classification)
 
     if classification.lower() == "factual":
+        router = SourceRouterAgent()
+        data_source = router.get_source(sample_query)
+        print("Chosen Data Source:", data_source)
         vectorretriever = VectorDbRetriever(top_k=10)
-        top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
+        top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, data_source)
 
         graphretriever = GraphDbRetriever(top_k=10, hops=1)
-        appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
+        appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
 
         reranker = Reranker(top_k=10)
         ranked_chunks = reranker.rerank(sample_query, appended_chunks)
