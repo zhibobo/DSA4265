@@ -13,15 +13,19 @@ class SummaryAgent:
 
     def summarize_text(self, text, query):
         prompt = f"""
-        Please provide a comprehensive and concise summary of the following text, keeping the user's query in mind.
+        Generate a comprehensive and context-aware summary of the provided document chunk, ensuring that it accurately addresses the user's query. Your summary should preserve all critical details, maintain the meaning, intent, and legal nuances of the original regulatory text, and avoid omitting any essential information to prevent regulatory misinterpretation.
 
+        Document Chunk:
         {text}
+
+        User's Query:
         {query}
+        
         """
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "developer", "content": "You are a summarization agent."},
+                {"role": "developer", "content": "You are an expert specializing in summarizing financial regulatory texts. Your summaries must preserve critical details and context to prevent regulatory misinterpretation."},
                 {"role": "user", "content": prompt}
             ]
         )
