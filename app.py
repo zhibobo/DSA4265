@@ -7,7 +7,7 @@ from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
 
-load_dotenv(dotenv_path="app3.env")
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "REPLACE_WITH_SOME_RANDOM_SECRET_KEY"
