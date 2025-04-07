@@ -85,10 +85,10 @@ class GraphDbRetriever:
                 b = record["m"]["id"]
                 if a not in graph:
                     graph.append(a) 
-                    retrieved_context += f"{record['n']['text']}///"
+                    retrieved_context += f"({record['n']['id']}) {record['n']['text']}   "
                 if b not in graph:
                     graph.append(b)
-                    retrieved_context += f"{record['m']['text']}///"
+                    retrieved_context += f"({record['m']['id']}) {record['m']['text']}   "
             return retrieved_context
         
     def get_appended_chunks(self, top_k_chunks, index_name):
