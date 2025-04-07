@@ -5,6 +5,7 @@ import openai
 from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
+from source_router import SourceRouterAgent
 
 load_dotenv()
 
@@ -49,14 +50,20 @@ def index():
             user_additional_info = request.form.get("user_additional_info", "")
             user_query = session.get("user_query", "")
             refined_query = f"{user_query} Additional context: {user_additional_info}"
-
+        
+        # Determine Data Source using SourceRouterAgent
+        router = SourceRouterAgent()
+        data_source = router.get_source(refined_query)
+        print("Chosen Data Source:", data_source) 
+        
         # Run the retrieval pipeline using the refined_query
         vectorretriever = VectorDbRetriever(top_k=10)
-        top_k_chunks = vectorretriever.get_top_k_chunks(refined_query, 'ba')
+        top_k_chunks = vectorretriever.get_top_k_chunks(refined_query, data_source)
         graphretriever = GraphDbRetriever(top_k=10, hops=1)
-        appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
+        appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
         reranker = Reranker(top_k=10)
         ranked_chunks = reranker.rerank(refined_query, appended_chunks)
+        
         # Summarize each reranked chunk
         summary_agent = SummaryAgent()
         summarized_chunks = []
