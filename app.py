@@ -128,6 +128,11 @@ def index():
             return render_template("index.html", step="start")
 
     return render_template("index.html", step=session["step"])
-
+    
+@app.route('/clear_chat_history', methods=['POST'])
+def clear_chat_history():
+    session['chat_history'] = []
+    return jsonify({'message': 'Chat history cleared'})
+    
 if __name__ == "__main__":
     app.run(debug=True)
