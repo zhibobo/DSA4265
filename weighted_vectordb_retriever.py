@@ -57,13 +57,10 @@ class GraphDbRetriever:
     def __init__(self, top_k, hops):
         self.top_k = top_k
         self.hops = hops
-
         self.uri = {'ba': os.getenv("NEO4J_URI_BA"),
                     'mas' : os.getenv("NEO4J_URI_MAS")}
-        
         self.auth = {'ba': (os.getenv("NEO4J_USERNAME_BA"), os.getenv("NEO4J_PASSWORD_BA")),
                      'mas': (os.getenv("NEO4J_USERNAME_MAS"), os.getenv("NEO4J_PASSWORD_MAS"))}
-        
         self.driver = {'ba': GraphDatabase.driver(self.uri['ba'], auth=self.auth['ba']),
                        'mas': GraphDatabase.driver(self.uri['mas'], auth=self.auth['mas'])}
 
@@ -147,8 +144,7 @@ class Reranker:
         #     print(f"Combined Score: {doc.metadata['combined_score']}")
         #     print("-" * 50)  # Separator for readability
         
-                
-        # Step 4: Return top-k reranked results
+            
         return [doc.page_content for doc in combined_scored_docs[:self.top_k]]
 
 
@@ -165,6 +161,7 @@ if __name__ == "__main__":
     #Run the line below to see the output for the whole flow
     print(reranker.rerank(sample_query,appended_chunks))
 
+    
     """
     Some findings:
     - The scores are repeated for quite a few document chunks
