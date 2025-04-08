@@ -147,15 +147,14 @@
 
       // Process each chat bubble's content.
       // The following replacements occur:
-      // 1. If a line contains a number + period immediately before **bold text**,
-      //    the number and period will be included inside the <strong> tag.
-      // 2. Generic conversion of **text** into <strong>text</strong>.
-      // 3. Lines starting with '### ' are converted into <h3> headings.
+      // 1. Bold the number preceding a bold text pattern.
+      // 2. Convert remaining **text** to <strong>text</strong>.
+      // 3. Convert lines starting with '### ' into <h3> headings.
       const messages = document.querySelectorAll('.chat-bubble');
       messages.forEach(function(msgEl) {
         let newHTML = msgEl.innerHTML;
 
-        // 1. Bold the number preceding a bold text pattern.
+        // 1. Bold the number and period preceding a bold text pattern.
         newHTML = newHTML.replace(/(\d+\.\s*)\*\*(.*?)\*\*/g, '<strong>$1$2</strong>');
 
         // 2. Convert remaining **text** to <strong>text</strong>.
@@ -181,13 +180,20 @@
       });
     }
 
-    // Clear Chat History function
+    // Clear Chat History function (updated)
     function clearChatHistory() {
       if (confirm("Are you sure you want to clear the chat history?")) {
-        // Clear the chat window content
-        const chatWindow = document.getElementById('chatWindow');
-        chatWindow.innerHTML = '<div class="chat-bubble chat-bubble-bot">Chat history cleared. Start a new conversation!</div>';
-        // Optionally, send a request to the server to clear session history.
+        // Send a POST request to the server to clear session history.
+        fetch('/clear_chat_history', { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            // Upon successful clearing, update the chat window.
+            const chatWindow = document.getElementById('chatWindow');
+            chatWindow.innerHTML = '<div class="chat-bubble chat-bubble-bot">Chat history cleared. Start a new conversation!</div>';
+          })
+          .catch(error => {
+            console.error('Error clearing chat history:', error);
+          });
       }
     }
   </script>
