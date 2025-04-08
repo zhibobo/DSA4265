@@ -69,7 +69,7 @@ class GraphDbRetriever:
         :index_name:  fixed string field('ba' or 'mas')
         :return: string that contains chunk's text + all queried neighbour's text
         """
-
+        ## Nothing is being returned for mas. Because of self-reference and refers_to/referred_by?  
         cypher_query = {'ba': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
                         WHERE elementId(n) <> elementId(m)
@@ -79,16 +79,27 @@ class GraphDbRetriever:
                         'mas': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
                         WHERE elementId(n) <> elementId(m)
-                        MATCH path = shortestPath((n)-[:REFERRED_BY*1..{self.hops}]-(m))
+                        MATCH path = shortestPath((n)-[:REFERRED_BY|REFERS_TO*1..{self.hops}]-(m))
                         RETURN DISTINCT n, m, length(path) AS hop
                     """
-                       }
+                       } 
         
         with self.driver[index_name].session() as session:
             result = session.run(cypher_query[index_name], chunk_id=chunk_id)
+            print('first result is', list(result), 'chunk id is', chunk_id)
+            if not list(result):  # No shortest path found (i.e., result is empty or no paths)
+                print("No shortest path found, checking for direct references.")
+                
+                # Query to get references when n and m are the same node
+                query_references = f"""
+                MATCH (n {{id: $chunk_id}})-[:REFERRED_BY|REFERS_TO*1..{self.hops}]-(m)
+                RETURN DISTINCT n,m
+                """
+                result = session.run(query_references, chunk_id=chunk_id)
+                print('fallback result is ', list(result))
+
             graph = []  
             retrieved_context = []
-            context_str = ""
             
             for record in result:
                 a = record["n"]["id"]
@@ -113,7 +124,7 @@ class GraphDbRetriever:
                          'hop': hop,
                          'weight': weight
                      })
-        
+        print('retrieved_context is', retrieved_context)
         return retrieved_context 
         
     def get_appended_chunks(self, top_k_chunks, index_name):
@@ -129,6 +140,7 @@ class GraphDbRetriever:
         for chunk in top_k_chunks:
             appended_chunk = self.get_neighbours(chunk, index_name)
             appended_top_k.append(appended_chunk)
+        print(appended_top_k) #ok
         return appended_top_k
 
 
@@ -137,13 +149,27 @@ class Reranker:
         self.top_k = top_k
     
     @staticmethod
-    def get_raw_scores(query, appended_chunks): #, cross_encoder
-        #print(chunk for chunk in appended_chunks)
-        pairs = [(query, chunk[0]['text']) for chunk in appended_chunks]  
-        cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
-        raw_scores = cross_encoder.predict(pairs)
-        probabilities = torch.sigmoid(torch.tensor(raw_scores))
-        return probabilities
+    def get_raw_scores(query, appended_chunks): 
+        pairs = []
+        for chunk in appended_chunks:
+            if chunk:  
+                if isinstance(chunk[0], dict) and 'text' in chunk[0]:
+                    pairs.append((query, chunk[0]['text']))
+                else:
+                    print(f"Warning: Chunk does not have the expected structure: {chunk}")
+            else:
+                print(f"Warning: Empty chunk encountered: {chunk}")
+    
+        if pairs:
+            cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
+            raw_scores = cross_encoder.predict(pairs)
+            probabilities = torch.sigmoid(torch.tensor(raw_scores))
+            #print(probabilities)
+            return probabilities
+        else:
+            print("Warning: No valid pairs formed for prediction.")
+            return []
+        
 
     #Rerank APPENDED top k chunks
     def rerank(self, query, appended_chunks):
@@ -183,7 +209,7 @@ class Reranker:
 if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
-    sample_query = "How can we manage service quality and customer feedback?"
+    sample_query = "What are the fair dealing guidelines? "
     top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
 
     graphretriever = GraphDbRetriever(top_k=10, hops=10)
