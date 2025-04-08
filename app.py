@@ -3,10 +3,11 @@ import re
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for
 import openai
-from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from weighted_vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
+
 
 load_dotenv()
 
@@ -20,6 +21,7 @@ def index():
         session["chat_history"] = []
     if "step" not in session:
         session["step"] = "start"
+
 
     intro_message = f"""I am a financial regulation checker chatbot. Currently, I have access to the following knowledge base:
     - **Banking Act 1970**
@@ -50,7 +52,7 @@ def index():
             # Determine data source 
             router = SourceRouterAgent()
             data_source = router.get_source(user_query)
-            print("Data Source:", data_source) 
+            # print("Data Source:", data_source) 
             if 'ba' in data_source:
                 data_source = 'ba'
             elif 'mas' in data_source:
@@ -65,7 +67,7 @@ def index():
             # Classify the query
             classifier_agent = QueryClassifierAgent()
             classification = classifier_agent.classify_query(user_query)
-            print("Classification:", classification)
+            # print("Classification:", classification)
             if 'factual' in classification.lower():
                 classification = 'factual'
             elif 'reasoning' in classification.lower():
@@ -78,17 +80,17 @@ def index():
             # Retrieve top-k chunks from VectorDB 
             vectorretriever = VectorDbRetriever(top_k=10)
             top_k_chunks = vectorretriever.get_top_k_chunks(user_query, data_source)
-            print("VectorDB Chunks:", top_k_chunks)
+            # print("VectorDB Chunks:", top_k_chunks)
 
             # Append references using GraphDB 
             graphretriever = GraphDbRetriever(hops=1)
             appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
-            print("GraphDB Appended Chunks:", appended_chunks)
+            # print("GraphDB Appended Chunks:", appended_chunks)
 
             # Rerank top_k appended chunks 
             reranker = Reranker(top_k=5)
             reranked_chunks = reranker.rerank(user_query, appended_chunks)
-            print("Reranker Chunks:", reranked_chunks)
+            # print("Reranker Chunks:", reranked_chunks)
 
             # Summarize chunks and tag with chunk ID
             summary_agent = SummaryAgent()
@@ -109,11 +111,11 @@ def index():
                 summary = summary.replace('\n', ' ')
                 summarized_chunks.append(f'{chunk_id}: {summary}')
             final_chunks = '\n\n'.join(summarized_chunks)
-            print('Final Summarized Chunks:', final_chunks)
+            # print('Final Summarized Chunks:', final_chunks)
 
             output_agent = OutputAgent()
             final_answer = output_agent.output_response(data_source, classification, user_query, summarized_chunks=final_chunks)
-            print(f"Final Answer:\n{final_answer}")
+            # print(f"Final Answer:\n{final_answer}")
 
             # Append bot's final answer and follow-up message to chat history
             chat_history = session["chat_history"]

@@ -2,7 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 import openai
-from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from weighted_vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
 from source_router import SourceRouterAgent
 
@@ -66,7 +66,7 @@ class OutputAgent:
         elif classification.lower() == "reasoning":
             # Chain-of-draft
             prompt = f"""
-            You are a financial reasoning agent. Answer the following question using relevant information from the provided context {{formatted_source}}. Think step by step: break down your reasoning into concise steps (no more than 30 words per step). These steps should help structure your approach logically, but avoid lengthy drafts.
+            You are a financial reasoning agent. Answer the following question using relevant information from the provided context {formatted_source}. Think step by step: break down your reasoning into concise steps (no more than 30 words per step). These steps should help structure your approach logically, but avoid lengthy drafts.
 
             At the end of your response, include a final, comprehensive answer after a separator line ####. This answer should fully address the question, incorporating insights from the reasoning steps and backed by the provided context. 
             
@@ -108,23 +108,23 @@ if __name__ == "__main__":
         classification = 'factual'
     elif 'reasoning' in classification.lower():
         classification = 'reasoning'
-    print("Classification:", classification)
+    # print("Classification:", classification)
 
     router = SourceRouterAgent()
     data_source = router.get_source(sample_query)
-    print("Chosen Data Source:", data_source)
+    # print("Chosen Data Source:", data_source)
 
     vectorretriever = VectorDbRetriever(top_k=10)
     top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, data_source)
-    print(top_k_chunks)
+    # print(top_k_chunks)
 
     graphretriever = GraphDbRetriever(top_k=10, hops=1)
     appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
-    print(appended_chunks)
+    # print(appended_chunks)
 
     reranker = Reranker(top_k=5)
     ranked_chunks = reranker.rerank(sample_query, appended_chunks)
-    print(ranked_chunks)
+    # print(ranked_chunks)
 
     summary_agent = SummaryAgent()
     summarized_chunks = []
@@ -144,8 +144,8 @@ if __name__ == "__main__":
         summary = summary.replace('\n', ' ')
         summarized_chunks.append(f'{chunk_id}: {summary}')
     final_chunks = '\n\n'.join(summarized_chunks)
-    print(final_chunks)
+    # print(final_chunks)
 
     output_agent = OutputAgent()
     final_answer = output_agent.output_response(data_source, classification, sample_query, summarized_chunks=final_chunks)
-    print(f"\nFinal Answer:\n{final_answer}")
+    # print(f"\nFinal Answer:\n{final_answer}")
