@@ -12,8 +12,6 @@ from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain.docstore.document import Document
 from langchain.retrievers import ContextualCompressionRetriever
 load_dotenv()
-# from langchain_community.vectorstores import FAISS
-# from langchain_huggingface import HuggingFaceEmbeddings
 from sentence_transformers import CrossEncoder
 from typing import List 
 
@@ -65,27 +63,59 @@ class GraphDbRetriever:
                        'mas': GraphDatabase.driver(self.uri['mas'], auth=self.auth['mas'])}
 
     def get_neighbours(self, chunk_id, index_name):
+        """
+        Takes one chunk id to query graph db and get all neighbours of n hops, append all their text into one
+        :chunk_id: string. (eg. 'ba-1970-15b.1')
+        :index_name:  fixed string field('ba' or 'mas')
+        :return: string that contains chunk's text + all queried neighbour's text
+        """
 
-        cypher_query = f"""
+        cypher_query = {'ba': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
                         WHERE elementId(n) <> elementId(m)
                         MATCH path = shortestPath((n)-[:REFERS_TO*1..{self.hops}]-(m))
                         RETURN DISTINCT n, m, length(path) AS hop
+                    """,
+                        'mas': f"""
+                        MATCH (n {{id: $chunk_id}}), (m)
+                        WHERE elementId(n) <> elementId(m)
+                        MATCH path = shortestPath((n)-[:REFERRED_BY*1..{self.hops}]-(m))
+                        RETURN DISTINCT n, m, length(path) AS hop
                     """
+                       }
         
         with self.driver[index_name].session() as session:
-            result = session.run(cypher_query, chunk_id=chunk_id)
+            result = session.run(cypher_query[index_name], chunk_id=chunk_id)
+            graph = []  
             retrieved_context = []
+            context_str = ""
+            
             for record in result:
-                hop = record["hop"]
-                weight = 1 - 0.1 * (hop - 1)
-                retrieved_context.append({
-                     'text': record['m']['text'],
-                     'hop': hop,
-                     'weight': weight
-                 })
-        return retrieved_context
-
+                a = record["n"]["id"]
+                b = record["m"]["id"]
+                if a not in graph:
+                    graph.append(a) 
+                    hop = record["hop"]
+                    weight = 1 - 0.1 * (hop - 1)
+                    retrieved_context.append({
+                         'id': record['n']['id'],
+                         'text': record['n']['text'],
+                         'hop': hop,
+                         'weight': weight
+                     })
+                if b not in graph:
+                    graph.append(b)
+                    hop = record["hop"]
+                    weight = 1 - 0.1 * (hop - 1)
+                    retrieved_context.append({
+                         'id': record['m']['id'],
+                         'text': record['m']['text'],
+                         'hop': hop,
+                         'weight': weight
+                     })
+        
+        return retrieved_context 
+        
     def get_appended_chunks(self, top_k_chunks, index_name):
         """
         Iterates list of top_k_chunk ids to query the graph db. outputs the list of top_k_chunks with their text appended with 
@@ -108,6 +138,7 @@ class Reranker:
     
     @staticmethod
     def get_raw_scores(query, appended_chunks): #, cross_encoder
+        #print(chunk for chunk in appended_chunks)
         pairs = [(query, chunk[0]['text']) for chunk in appended_chunks]  
         cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
         raw_scores = cross_encoder.predict(pairs)
@@ -117,17 +148,18 @@ class Reranker:
     #Rerank APPENDED top k chunks
     def rerank(self, query, appended_chunks):
         """
-        Retrieve top-k similar documents using vector similarity + rerank them independently.
+        Retrieve top-k similar documents using vector similarity + neighbour weights + rerank them independently.
         Returns a list of reranked documents.
         """
         
         reranker_model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
       
-        raw_scores = self.get_raw_scores(query, appended_chunks) #, reranker_model
+        raw_scores = self.get_raw_scores(query, appended_chunks)
         docs = [
             Document(
-                page_content=chunk[0]['text'],
+                page_content=f"ID: {chunk[0]['id']}\n{chunk[0]['text']}",
                 metadata={
+                    'id': chunk[0]['id'], 
                     'hop': chunk[0]['hop'],
                     'weight': chunk[0]['weight'],
                     'raw_score': raw_scores[i],  # Add the raw score to metadata
@@ -136,9 +168,9 @@ class Reranker:
             ) 
             for i, chunk in enumerate(appended_chunks)
         ]
-    
         
-        combined_scored_docs = sorted(docs, key=lambda doc: doc.metadata['combined_score'], reverse=True) #reranked_docs
+        combined_scored_docs = sorted(docs, key=lambda doc: doc.metadata['combined_score'], reverse=True) 
+        
         # for doc in combined_scored_docs:
         #     print(f"Document: {doc.page_content[:100]}...")  # Print the first 100 characters of the document content (for brevity)
         #     print(f"Combined Score: {doc.metadata['combined_score']}")
@@ -151,11 +183,11 @@ class Reranker:
 if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
-    sample_query = "What is the limit on equity investments for banks in Singapore?"
-    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
+    sample_query = "How can we manage service quality and customer feedback?"
+    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
 
     graphretriever = GraphDbRetriever(top_k=10, hops=10)
-    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
+    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'mas')
 
     reranker = Reranker(top_k=5)
     #Run the line below to see the output for the whole flow
@@ -164,36 +196,22 @@ if __name__ == "__main__":
     
     """
     Some findings:
-    - The scores are repeated for quite a few document chunks
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 3.122718044323847e-05
+    - The scores are repeated for  a few document chunks
+    Document: ID: ba-1970-31.1a
+    31(1A) A bank incorporated outside Singapore must not, through a branch or office ...
+    Combined Score: 0.8976913094520569
     --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 3.122718044323847e-05
+    Document: ID: ba-1970-31.1
+    31(1) A bank incorporated in Singapore must not acquire or hold any equity investme...
+    Combined Score: 0.8972207903862
     --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 3.122718044323847e-05
+    Document: ID: ba-1970-33.1
+    33(1) A bank incorporated in Singapore must not acquire or hold interests in or rig...
+    Combined Score: 0.7631070613861084
     --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 3.122718044323847e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.7757492716773413e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.7757492716773413e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.4287806809297763e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.4287806809297763e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.4287806809297763e-05
-    --------------------------------------------------
-    Document: 7(2) [Deleted by Act 5 of 2016]...
-    Combined Score: 2.4287806809297763e-05
+    Document: ID: ba-1970-55t.3
+    55T(3) Any amount of paid-up capital or capital funds of a merchant bank incorpora...
+    Combined Score: 0.4621790051460266
     --------------------------------------------------
     """
     
