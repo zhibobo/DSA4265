@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
         summary_agent = SummaryAgent()
         summarized_chunks = []
-        for chunk, _ in ranked_chunks:
+        for chunk in ranked_chunks:
             summary = summary_agent.summarize_text(chunk, sample_query)
             summarized_chunks.append(summary)
 
