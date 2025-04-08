@@ -3,7 +3,7 @@ import re
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import openai
-from weighted_vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
