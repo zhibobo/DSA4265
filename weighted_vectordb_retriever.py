@@ -54,8 +54,7 @@ class VectorDbRetriever:
 
 
 class GraphDbRetriever:
-    def __init__(self, top_k, hops):
-        self.top_k = top_k
+    def __init__(self, hops):
         self.hops = hops
 
         self.uri = {'ba': os.getenv("NEO4J_URI_BA"),
