@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for
 import openai
 from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from dfs_vectordb_retriever import DFSRetriever
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
@@ -67,8 +68,11 @@ def index():
         # Run the retrieval pipeline using the refined_query
         vectorretriever = VectorDbRetriever(top_k=10)
         top_k_chunks = vectorretriever.get_top_k_chunks(refined_query, data_source)
-        graphretriever = GraphDbRetriever(top_k=10, hops=1)
-        appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
+        #To swap methods, just uncomment either of the 2 lines of code
+        #graphretriever = GraphDbRetriever(top_k=10, hops=1)
+        #appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
+        dfsretriever = DFSRetriever(top_k=3, path_length=3)
+        appended_chunks = dfsretriever.run_DFS(refined_query, top_k_chunks, data_source)
         reranker = Reranker(top_k=10)
         ranked_chunks = reranker.rerank(refined_query, appended_chunks)
         summary_agent = SummaryAgent()
