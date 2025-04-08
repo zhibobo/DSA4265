@@ -7,7 +7,10 @@ import json
 import networkx as nx
 import matplotlib.pyplot as plt
 
-load_status = dotenv.load_dotenv("../Neo4j-66cb9e32-Created-2025-03-26.txt")
+load_status = dotenv.load_dotenv("Neo4j-2ba15971-Created-2025-03-31.txt") 
+# mas_db: Neo4j-2ba15971-Created-2025-03-31.txt 
+# ba_db: Neo4j-66cb9e32-Created-2025-03-26.txt
+
 if load_status is False:
     raise RuntimeError('Environment variables not loaded.')
 
@@ -100,13 +103,13 @@ class GraphDB:
 
     def run(self): 
         ## This step does not need to be ran after the data is uploaded into the database.
-        # self.load_json_to_graph()
+        self.load_json_to_graph()
 
         # Run this step to visualise relationships within the graph. 
         if self.visualisation == True: 
             self.visualise_graph()
 
 if __name__ == "__main__":
-    graphdb = GraphDB(json_file = "../ba_data_extraction/banking_act.json",
+    graphdb = GraphDB(json_file = "../mas_data_extraction/mas_chunks.json",
                       visualisation = True)
     graphdb.run()
