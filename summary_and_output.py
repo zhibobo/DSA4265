@@ -64,14 +64,21 @@ class OutputAgent:
             Answer the question based on information from the context. Add in-text citations (e.g: {example_citation}) at the end of each phrase matched. 
             """
         elif classification.lower() == "reasoning":
-            # Chain-of-draft
+            # Chain-of-draft with disclaimer handling
             prompt = f"""
             You are a financial reasoning agent. Answer the following question using relevant information from the provided context {formatted_source}. Think step by step: break down your reasoning into concise steps (no more than 30 words per step). These steps should help structure your approach logically, but avoid lengthy drafts.
 
-            At the end of your response, include a final, comprehensive answer after a separator line ####. This answer should fully address the question, incorporating insights from the reasoning steps and backed by the provided context. 
-            
+            If the question cannot be fully answered due to missing or insufficient information, or if the answer depends on specific details not provided, include a clear disclaimer **at the start of your response**, beginning with **"Disclaimer:"**. The disclaimer should:
+            - Warn that the answer is partial and may vary depending on omitted details.
+            - Indicate what kind of additional context or information is needed.
+            - Encourage the user to resubmit the original query together with more details for a more accurate result.
+
+            Add a visible separator horizontal line `-----` **after** the disclaimer to mark the beginning of the actual reasoning steps and final answer.
+
+            At the end of your response, include a final, comprehensive answer after a separator line `####`. This answer should fully address the question, incorporating insights from the reasoning steps and backed by the provided context. 
+    
             Use in-text citations (e.g., {example_citation}) at the end of any phrase where specific context is used, including in the final answer.
-            
+    
             ## Question:
             {query}
 
@@ -79,11 +86,13 @@ class OutputAgent:
             {summarized_chunks}
 
             ## Answer format:
+            [Optional Disclaimer]
+            -----
             1. [reasoning step 1]
             2. [reasoning step 2]
             3. [reasoning step 3]
             ####
-            [final answer]
+            [final answer or conclusion with in-text citations]
             """
         else:
             return "Error: Unrecognized classification: " + classification
@@ -92,7 +101,7 @@ class OutputAgent:
         response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "developer", "content": "You are an RAG-powered chatbot for financial regulation checker."},
+                    {"role": "developer", "content": "You are an RAG-powered chatbot specialized in financial regulations and compliance in Singapore."},
                     {"role": "user", "content": prompt}
                 ]
             )

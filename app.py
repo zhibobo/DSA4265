@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import openai
 from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+#from weighted_vectordb_retriever import WeightedVectorDbRetriever
+from dfs_vectordb_retriever import DFSRetriever
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
@@ -85,6 +87,14 @@ def index():
             # Append references using GraphDB 
             graphretriever = GraphDbRetriever(hops=1)
             appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
+            
+            #---------------------(FOR EVALUATION PURPOSES)---------------------
+            #graphretriever = WeightedVectorDbRetriever(hops=1)
+            #appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
+
+            #graphretriever = DFSRetriever(path_length=1)
+            #appended_chunks = graphretriever.run_DFS(top_k_chunks, data_source)
+            
             # print("GraphDB Appended Chunks:", appended_chunks)
 
             # Rerank top_k appended chunks 
@@ -122,7 +132,7 @@ def index():
             chat_history.append({"sender": "bot", "message": final_answer})
             chat_history.append({"sender": "bot", "message": "Can I help you with anything else?"})
             session["chat_history"] = chat_history
-
+            
             # Reset step to "start" so conversation can continue
             session["step"] = "start"
             return render_template("index.html", step="start")
