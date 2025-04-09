@@ -107,15 +107,19 @@ def index():
             summarized_chunks = []
             for chunk in reranked_chunks:
                 id_pattern = re.match(r"\(([^)]+)\)", chunk)
-                chunk_id = id_pattern.group(1)
-                if data_source == 'ba':
-                    chunk_id = chunk_id.replace('ba', 'Banking Act')
-                elif data_source == 'mas':
-                    chunk_id = chunk_id.replace('mas', 'MAS')
 
-                before, sep, after = chunk_id.rpartition('-')
-                chunk_id = before + ', ' + after
-                chunk_id = chunk_id.replace('-', ' ').title()    
+                if id_pattern:
+                    chunk_id = id_pattern.group(1) 
+                    if data_source == 'ba':
+                        chunk_id = chunk_id.replace('ba', 'Banking Act')
+                    elif data_source == 'mas':
+                        chunk_id = chunk_id.replace('mas', 'MAS')
+
+                    before, sep, after = chunk_id.rpartition('-')
+                    chunk_id = before + ', ' + after
+                    chunk_id = chunk_id.replace('-', ' ').title()
+                else: 
+                    chunk_id = ''    
 
                 summary = summary_agent.summarize_text(chunk, user_query)
                 summary = summary.replace('\n', ' ')
