@@ -251,38 +251,24 @@ class DFSRetriever:
         return self.get_appended_chunks_dfs()
 
 if __name__ == "__main__":
-    vectorretriever = VectorDbRetriever(top_k=3)
+    vectorretriever = VectorDbRetriever(top_k=10)
 
     sample_query = "What is the limit on equity investments for banks in Singapore?"
     top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
-    print(f"This is the top_k_chunks {top_k_chunks}")
 
-    dfsretriever = DFSRetriever(path_length=3)
+    dfsretriever = DFSRetriever(path_length=1)
     appended_chunks_dfs = dfsretriever.run_DFS(sample_query,top_k_chunks,'ba')
     
     #graphretriever = GraphDbRetriever(hops=1)
     #appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
-    reranker = Reranker(top_k=1)
+    reranker = Reranker(top_k=5)
     #Run the line below to see the output for the whole flow
-    a = reranker.rerank(sample_query,appended_chunks_dfs)
-    print(a)
-    #b = reranker.rerank(sample_query,appended_chunks)
-    #print(b)
-    """
-    with open("dfs.txt", "w", encoding="utf-8") as file:
-        file.write(a[0])
+    print(reranker.rerank(sample_query,appended_chunks_dfs))
 
-    with open("output.txt", "w", encoding="utf-8") as file:
-        file.write(b[0])
-    #GraphDBRetriever --> Reranker --> GraphDBRetriever
-    """
     """
     Some findings:
     - Root Chunk would always be the first in the list of chunks
     - The hops function should work. There is an increase in the length of chunk after appending, but validation not done to see if appended the correct neighbours
     - Reranking does change the sequence of the top_k, based on the sample query.
-
-    Note:
-     - Remove top_k from GraphDB retriever
     """
