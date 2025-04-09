@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import openai
 from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from dfs_vectordb_retriever import DFSRetriever
 from classify_query import QueryClassifierAgent
 from summary_and_output import SummaryAgent, OutputAgent
 from source_router import SourceRouterAgent
@@ -122,7 +123,7 @@ def index():
             chat_history.append({"sender": "bot", "message": final_answer})
             chat_history.append({"sender": "bot", "message": "Can I help you with anything else?"})
             session["chat_history"] = chat_history
-
+            
             # Reset step to "start" so conversation can continue
             session["step"] = "start"
             return render_template("index.html", step="start")
