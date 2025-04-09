@@ -68,6 +68,7 @@ class GraphDbRetriever:
         :index_name:  fixed string field('ba' or 'mas')
         :return: string that contains chunk's text + all queried neighbour's text
         """
+        ## Nothing is being returned for mas. There are 153 notes that are isolated. (no relationships)
 
         cypher_query = {'ba': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
@@ -81,13 +82,50 @@ class GraphDbRetriever:
                         MATCH path = shortestPath((n)-[:REFERRED_BY*1..{self.hops}]-(m))
                         RETURN DISTINCT n, m, length(path) AS hop
                     """
-                       }
+                       } 
         
         with self.driver[index_name].session() as session:
-            result = session.run(cypher_query[index_name], chunk_id=chunk_id)
+            result = list(session.run(cypher_query[index_name], chunk_id=chunk_id))
+            #print('first result is', result, 'chunk id is', chunk_id)
+
+            if not list(result):  # No shortest path found (i.e., result is empty or no paths)
+                print("No shortest path found, checking for direct references.")
+                
+                # Query to get references when n and m are the same node
+                query_references = f"""
+                       MATCH (n {{id: $chunk_id}})
+                       OPTIONAL MATCH (n)-[:REFERRED_BY*1..{self.hops}]-(m)
+                       WITH n, COLLECT(m) AS connected_nodes
+                       RETURN 
+                           CASE WHEN SIZE(connected_nodes) = 0 THEN (n)
+                           ELSE connected_nodes
+                        END AS result
+                """
+                fallback_result = list(session.run(query_references, chunk_id=chunk_id))
+                record = fallback_result[0]['result']
+                if isinstance(record, list):
+                    result = record
+                else:
+                    result = [record]
+                #print('fallback result is ', result)
+                
+                graph = []  
+                retrieved_context = []
+                
+                for record in result:
+                    #print('record in result is', record.keys())
+                    retrieved_context.append({
+                         'id': record['id'],
+                         'text': record['text'],
+                         'hop': 1,
+                         'weight': 1
+                     })
+                #print('retrieved_context is', retrieved_context)
+                return retrieved_context
+
+
             graph = []  
             retrieved_context = []
-            context_str = ""
             
             for record in result:
                 a = record["n"]["id"]
@@ -112,7 +150,7 @@ class GraphDbRetriever:
                          'hop': hop,
                          'weight': weight
                      })
-        
+        # print('retrieved_context is', retrieved_context)
         return retrieved_context 
         
     def get_appended_chunks(self, top_k_chunks, index_name):
@@ -128,6 +166,7 @@ class GraphDbRetriever:
         for chunk in top_k_chunks:
             appended_chunk = self.get_neighbours(chunk, index_name)
             appended_top_k.append(appended_chunk)
+        #print(appended_top_k) #ok
         return appended_top_k
 
 
@@ -136,13 +175,27 @@ class Reranker:
         self.top_k = top_k
     
     @staticmethod
-    def get_raw_scores(query, appended_chunks): #, cross_encoder
-        #print(chunk for chunk in appended_chunks)
-        pairs = [(query, chunk[0]['text']) for chunk in appended_chunks]  
-        cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
-        raw_scores = cross_encoder.predict(pairs)
-        probabilities = torch.sigmoid(torch.tensor(raw_scores))
-        return probabilities
+    def get_raw_scores(query, appended_chunks): 
+        pairs = []
+        for chunk in appended_chunks:
+            if chunk:  
+                if isinstance(chunk[0], dict) and 'text' in chunk[0]:
+                    pairs.append((query, chunk[0]['text']))
+                else:
+                    print(f"Warning: Chunk does not have the expected structure: {chunk}")
+            else:
+                print(f"Warning: Empty chunk encountered: {chunk}")
+    
+        if pairs:
+            cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
+            raw_scores = cross_encoder.predict(pairs)
+            probabilities = torch.sigmoid(torch.tensor(raw_scores))
+            #print(probabilities)
+            return probabilities
+        else:
+            print("Warning: No valid pairs formed for prediction.")
+            return []
+        
 
     #Rerank APPENDED top k chunks
     def rerank(self, query, appended_chunks):
@@ -170,10 +223,10 @@ class Reranker:
         
         combined_scored_docs = sorted(docs, key=lambda doc: doc.metadata['combined_score'], reverse=True) 
         
-        # for doc in combined_scored_docs:
-        #     print(f"Document: {doc.page_content[:100]}...")  # Print the first 100 characters of the document content (for brevity)
-        #     print(f"Combined Score: {doc.metadata['combined_score']}")
-        #     print("-" * 50)  # Separator for readability
+        for doc in combined_scored_docs:
+            print(f"Document: {doc.page_content[:100]}...")  # Print the first 100 characters of the document content (for brevity)
+            print(f"Combined Score: {doc.metadata['combined_score']}")
+            print("-" * 50)  # Separator for readability
         
             
         return [doc.page_content for doc in combined_scored_docs[:self.top_k]]
@@ -182,11 +235,11 @@ class Reranker:
 if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
-    sample_query = "How can we manage service quality and customer feedback?"
-    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
+    sample_query = "How much liquidity do I need to set up a bank? "
+    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
 
-    graphretriever = GraphDbRetriever(top_k=10, hops=10)
-    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'mas')
+    graphretriever = GraphDbRetriever(top_k=10, hops=2)
+    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
     reranker = Reranker(top_k=5)
     #Run the line below to see the output for the whole flow
