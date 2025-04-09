@@ -69,7 +69,8 @@ class GraphDbRetriever:
         :index_name:  fixed string field('ba' or 'mas')
         :return: string that contains chunk's text + all queried neighbour's text
         """
-        ## Nothing is being returned for mas. Because of self-reference and refers_to/referred_by?  
+        ## Nothing is being returned for mas. There are 153 notes that are isolated. (no relationships)
+
         cypher_query = {'ba': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
                         WHERE elementId(n) <> elementId(m)
@@ -79,24 +80,50 @@ class GraphDbRetriever:
                         'mas': f"""
                         MATCH (n {{id: $chunk_id}}), (m)
                         WHERE elementId(n) <> elementId(m)
-                        MATCH path = shortestPath((n)-[:REFERRED_BY|REFERS_TO*1..{self.hops}]-(m))
+                        MATCH path = shortestPath((n)-[:REFERRED_BY*1..{self.hops}]-(m))
                         RETURN DISTINCT n, m, length(path) AS hop
                     """
                        } 
         
         with self.driver[index_name].session() as session:
-            result = session.run(cypher_query[index_name], chunk_id=chunk_id)
-            print('first result is', list(result), 'chunk id is', chunk_id)
+            result = list(session.run(cypher_query[index_name], chunk_id=chunk_id))
+            #print('first result is', result, 'chunk id is', chunk_id)
+
             if not list(result):  # No shortest path found (i.e., result is empty or no paths)
                 print("No shortest path found, checking for direct references.")
                 
                 # Query to get references when n and m are the same node
                 query_references = f"""
-                MATCH (n {{id: $chunk_id}})-[:REFERRED_BY|REFERS_TO*1..{self.hops}]-(m)
-                RETURN DISTINCT n,m
+                       MATCH (n {{id: $chunk_id}})
+                       OPTIONAL MATCH (n)-[:REFERRED_BY*1..{self.hops}]-(m)
+                       WITH n, COLLECT(m) AS connected_nodes
+                       RETURN 
+                           CASE WHEN SIZE(connected_nodes) = 0 THEN (n)
+                           ELSE connected_nodes
+                        END AS result
                 """
-                result = session.run(query_references, chunk_id=chunk_id)
-                print('fallback result is ', list(result))
+                fallback_result = list(session.run(query_references, chunk_id=chunk_id))
+                record = fallback_result[0]['result']
+                if isinstance(record, list):
+                    result = record
+                else:
+                    result = [record]
+                #print('fallback result is ', result)
+                
+                graph = []  
+                retrieved_context = []
+                
+                for record in result:
+                    #print('record in result is', record.keys())
+                    retrieved_context.append({
+                         'id': record['id'],
+                         'text': record['text'],
+                         'hop': 1,
+                         'weight': 1
+                     })
+                #print('retrieved_context is', retrieved_context)
+                return retrieved_context
+
 
             graph = []  
             retrieved_context = []
@@ -124,7 +151,7 @@ class GraphDbRetriever:
                          'hop': hop,
                          'weight': weight
                      })
-        print('retrieved_context is', retrieved_context)
+        # print('retrieved_context is', retrieved_context)
         return retrieved_context 
         
     def get_appended_chunks(self, top_k_chunks, index_name):
@@ -140,7 +167,7 @@ class GraphDbRetriever:
         for chunk in top_k_chunks:
             appended_chunk = self.get_neighbours(chunk, index_name)
             appended_top_k.append(appended_chunk)
-        print(appended_top_k) #ok
+        #print(appended_top_k) #ok
         return appended_top_k
 
 
@@ -197,10 +224,10 @@ class Reranker:
         
         combined_scored_docs = sorted(docs, key=lambda doc: doc.metadata['combined_score'], reverse=True) 
         
-        # for doc in combined_scored_docs:
-        #     print(f"Document: {doc.page_content[:100]}...")  # Print the first 100 characters of the document content (for brevity)
-        #     print(f"Combined Score: {doc.metadata['combined_score']}")
-        #     print("-" * 50)  # Separator for readability
+        for doc in combined_scored_docs:
+            print(f"Document: {doc.page_content[:100]}...")  # Print the first 100 characters of the document content (for brevity)
+            print(f"Combined Score: {doc.metadata['combined_score']}")
+            print("-" * 50)  # Separator for readability
         
             
         return [doc.page_content for doc in combined_scored_docs[:self.top_k]]
@@ -209,11 +236,11 @@ class Reranker:
 if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
-    sample_query = "What are the fair dealing guidelines? "
-    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
+    sample_query = "How much liquidity do I need to set up a bank? "
+    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
 
-    graphretriever = GraphDbRetriever(top_k=10, hops=10)
-    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'mas')
+    graphretriever = GraphDbRetriever(top_k=10, hops=2)
+    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
     reranker = Reranker(top_k=5)
     #Run the line below to see the output for the whole flow
