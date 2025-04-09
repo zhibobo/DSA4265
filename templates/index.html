@@ -99,7 +99,9 @@
       <div id="chatWindow" class="chat-window">
         {% for message in session.get("chat_history", []) %}
           {% if message.sender == "user" %}
-            <div class="chat-bubble chat-bubble-user">{{ message.message }}</div>
+            <div class="chat-bubble chat-bubble-user">
+              {{ message.message }}
+            </div>
           {% elif message.sender == "bot" %}
             <div class="chat-bubble chat-bubble-bot">
               <div class="d-flex justify-content-between align-items-start">
@@ -139,9 +141,30 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var chatWindow = document.getElementById('chatWindow');
-      if(chatWindow){
-          chatWindow.scrollTop = chatWindow.scrollHeight;
+      if (chatWindow) {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
       }
+
+      // Process each chat bubble's content.
+      // The following replacements occur:
+      // 1. Bold the number preceding a bold text pattern.
+      // 2. Convert remaining **text** to <strong>text</strong>.
+      // 3. Convert lines starting with '### ' into <h3> headings.
+      const messages = document.querySelectorAll('.chat-bubble');
+      messages.forEach(function(msgEl) {
+        let newHTML = msgEl.innerHTML;
+
+        // 1. Bold the number and period preceding a bold text pattern.
+        newHTML = newHTML.replace(/(\d+\.\s*)\*\*(.*?)\*\*/g, '<strong>$1$2</strong>');
+
+        // 2. Convert remaining **text** to <strong>text</strong>.
+        newHTML = newHTML.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // 3. Convert lines beginning with '### ' into <h3> headings.
+        newHTML = newHTML.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+
+        msgEl.innerHTML = newHTML;
+      });
     });
 
     // Copy-to-clipboard function
@@ -157,13 +180,20 @@
       });
     }
 
-    // Clear Chat History function
+    // Clear Chat History function (updated)
     function clearChatHistory() {
       if (confirm("Are you sure you want to clear the chat history?")) {
-        // Clear the chat window content
-        const chatWindow = document.getElementById('chatWindow');
-        chatWindow.innerHTML = '<div class="chat-bubble chat-bubble-bot">Chat history cleared. Start a new conversation!</div>';
-        // Optionally, you can also send a request to the server to clear session history.
+        // Send a POST request to the server to clear session history.
+        fetch('/clear_chat_history', { method: 'POST' })
+          .then(response => response.json())
+          .then(data => {
+            // Upon successful clearing, update the chat window.
+            const chatWindow = document.getElementById('chatWindow');
+            chatWindow.innerHTML = '<div class="chat-bubble chat-bubble-bot">Chat history cleared. Start a new conversation!</div>';
+          })
+          .catch(error => {
+            console.error('Error clearing chat history:', error);
+          });
       }
     }
   </script>
