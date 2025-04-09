@@ -54,7 +54,7 @@ def index():
             # Determine data source 
             router = SourceRouterAgent()
             data_source = router.get_source(user_query)
-            # print("Data Source:", data_source) 
+            print("Data Source:", data_source) 
             if 'ba' in data_source:
                 data_source = 'ba'
             elif 'mas' in data_source:
@@ -69,7 +69,7 @@ def index():
             # Classify the query
             classifier_agent = QueryClassifierAgent()
             classification = classifier_agent.classify_query(user_query)
-            # print("Classification:", classification)
+            print("Classification:", classification)
             if 'factual' in classification.lower():
                 classification = 'factual'
             elif 'reasoning' in classification.lower():
@@ -82,7 +82,7 @@ def index():
             # Retrieve top-k chunks from VectorDB 
             vectorretriever = VectorDbRetriever(top_k=10)
             top_k_chunks = vectorretriever.get_top_k_chunks(user_query, data_source)
-            # print("VectorDB Chunks:", top_k_chunks)
+            print("VectorDB Chunks:", top_k_chunks)
 
             # Append references using GraphDB 
             graphretriever = GraphDbRetriever(hops=1)
@@ -95,37 +95,41 @@ def index():
             #graphretriever = DFSRetriever(path_length=1)
             #appended_chunks = graphretriever.run_DFS(top_k_chunks, data_source)
             
-            # print("GraphDB Appended Chunks:", appended_chunks)
+            print("GraphDB Appended Chunks:", appended_chunks)
 
             # Rerank top_k appended chunks 
             reranker = Reranker(top_k=5)
             reranked_chunks = reranker.rerank(user_query, appended_chunks)
-            # print("Reranker Chunks:", reranked_chunks)
+            print("Reranker Chunks:", reranked_chunks)
 
             # Summarize chunks and tag with chunk ID
             summary_agent = SummaryAgent()
             summarized_chunks = []
             for chunk in reranked_chunks:
                 id_pattern = re.match(r"\(([^)]+)\)", chunk)
-                chunk_id = id_pattern.group(1)
-                if data_source == 'ba':
-                    chunk_id = chunk_id.replace('ba', 'Banking Act')
-                elif data_source == 'mas':
-                    chunk_id = chunk_id.replace('mas', 'MAS')
 
-                before, sep, after = chunk_id.rpartition('-')
-                chunk_id = before + ', ' + after
-                chunk_id = chunk_id.replace('-', ' ').title()    
+                if id_pattern:
+                    chunk_id = id_pattern.group(1) 
+                    if data_source == 'ba':
+                        chunk_id = chunk_id.replace('ba', 'Banking Act')
+                    elif data_source == 'mas':
+                        chunk_id = chunk_id.replace('mas', 'MAS')
+
+                    before, sep, after = chunk_id.rpartition('-')
+                    chunk_id = before + ', ' + after
+                    chunk_id = chunk_id.replace('-', ' ').title()
+                else: 
+                    chunk_id = ''    
 
                 summary = summary_agent.summarize_text(chunk, user_query)
                 summary = summary.replace('\n', ' ')
                 summarized_chunks.append(f'{chunk_id}: {summary}')
             final_chunks = '\n\n'.join(summarized_chunks)
-            # print('Final Summarized Chunks:', final_chunks)
+            print('Final Summarized Chunks:', final_chunks)
 
             output_agent = OutputAgent()
             final_answer = output_agent.output_response(data_source, classification, user_query, summarized_chunks=final_chunks)
-            # print(f"Final Answer:\n{final_answer}")
+            print(f"Final Answer:\n{final_answer}")
 
             # Append bot's final answer and follow-up message to chat history
             chat_history = session["chat_history"]
