@@ -355,7 +355,7 @@ class MASPreprocessor:
             if pid:
                 part_map.setdefault(pid, []).append(c["id"])
     
-        def get_references(text: str) -> List[str]:
+        def get_references(text: str, chunk_id: str) -> List[str]:
             refs = set()
     
             # (1) paragraphs 6, 7 and 8 or 6.1, 6.2 and 6.3 FIRST
@@ -399,10 +399,11 @@ class MASPreprocessor:
                         if ref_id in id_set:
                             refs.add(ref_id)
     
+            refs.discard(chunk_id)
             return sorted(refs)
     
         for chunk in notice_chunks:
-            chunk["metadata"]["references"] = get_references(chunk["text"])
+            chunk["metadata"]["references"] = get_references(chunk["text"], chunk["id"])
     
         return notice_chunks
 
@@ -481,6 +482,7 @@ class MASPreprocessor:
                         if ref_id in id_set_notice:
                             refs.add(ref_id)
         
+            refs.discard(chunk["id"])
             return sorted(refs)
         
         # Apply to all
