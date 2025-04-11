@@ -127,9 +127,10 @@ class BankingActPreprocessor:
                 #If no subsection, take section as the smallest chunk
                 if len(subsections_list) == 0: 
                     chunk_id = (id_prefix + '-' + section_id).lower()
+                    text = f"Part {toc_section['part_id']}. {toc_section['part_title']}\nSection {toc_section['section_id']}. {toc_section['section_title']}\n{section_text}"
                     chunk = {
                         "id": chunk_id, 
-                        "text": section_text,
+                        "text": text,
                         "metadata": toc_section
                     }
 
@@ -165,9 +166,10 @@ class BankingActPreprocessor:
                         subsection_id = subsection_start.replace("(", "").replace(")", "")
                         chunk_id = (f'{id_prefix}-{section_id}.{subsection_id}').lower()
 
+                        text = f"Part {toc_section['part_id']}. {toc_section['part_title']}\nSection {toc_section['section_id']}. {toc_section['section_title']}\n{subsection_text}"
                         chunk = {
                             "id": chunk_id, 
-                            "text": subsection_text,
+                            "text": text,
                             "metadata": toc_section
                         }
 
