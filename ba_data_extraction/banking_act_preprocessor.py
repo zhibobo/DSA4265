@@ -2,7 +2,7 @@ import re
 import pymupdf
 import copy
 
-DEFAULT_FILENAME = r"ba_documents/Banking Act 1970.pdf"
+DEFAULT_FILENAME = r"ba_data_extraction/ba_documents/Banking Act 1970.pdf"
 FOOTER_PATTERN = r"Banking Act 1970 (\d+) 2020 Ed. Informal Consolidation – version in force from \d{1,2}/\d{1,2}/\d{4}|Banking Act 1970 2020 Ed. (\d+) Informal Consolidation – version in force from \d{1,2}/\d{1,2}/\d{4}|Informal Consolidation – version in force from \d{1,2}/\d{1,2}/\d{4} (\d+) 2020 Ed."
 PREFIX = 'ba-1970'
 

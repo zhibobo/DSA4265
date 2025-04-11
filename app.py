@@ -55,9 +55,9 @@ def index():
             router = SourceRouterAgent()
             data_source = router.get_source(user_query)
             # print("Data Source:", data_source) 
-            if 'ba' in data_source:
+            if 'ba' in data_source.lower():
                 data_source = 'ba'
-            elif 'mas' in data_source:
+            elif 'mas' in data_source.lower():
                 data_source = 'mas'
             else:
                 chat_history.append({"sender": "bot", "message": intro_message})
@@ -89,11 +89,11 @@ def index():
             appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
             
             #---------------------(FOR EVALUATION PURPOSES)---------------------
-            #graphretriever = WeightedVectorDbRetriever(hops=1)
+            #graphretriever = WeightedGraphDbRetriever(hops=1)
             #appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, data_source)
 
             #graphretriever = DFSRetriever(path_length=1)
-            #appended_chunks = graphretriever.run_DFS(top_k_chunks, data_source)
+            #appended_chunks = graphretriever.run_DFS(user_query, top_k_chunks, data_source)
             
             # print("GraphDB Appended Chunks:", appended_chunks)
 
