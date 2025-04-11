@@ -57,6 +57,25 @@ class GraphDbRetriever:
         
         self.driver = {'ba': GraphDatabase.driver(self.uri['ba'], auth=self.auth['ba']),
                        'mas': GraphDatabase.driver(self.uri['mas'], auth=self.auth['mas'])}
+        
+    def get_single_node(self, chunk_id, index_name):
+        """
+        Takes one chunk id to query graph db and get that chunk
+
+        :chunk_id: string. (eg. 'ba-1970-15b.1')
+        :index_name:  fixed string field('ba' or 'mas')
+        :return: string that contains chunk's text + queried text
+        """
+        #edit the queries below for ba and mas index respectively
+        cypher_query = f"""
+        MATCH (n {{id: $chunk_id}})
+        RETURN n
+        """
+        with self.driver[index_name].session() as session:
+            result = session.run(cypher_query, chunk_id=chunk_id)
+            for record in result:
+                node = record["n"]
+                return f"({node['id']}) {node['text']}   "
 
     def get_neighbours(self, chunk_id, index_name):
         """
@@ -76,19 +95,24 @@ class GraphDbRetriever:
         RETURN DISTINCT n,m
         """}
         with self.driver[index_name].session() as session:
-            result = session.run(cypher_query[index_name], chunk_id=chunk_id)
-            graph = []
-            retrieved_context = ""
-            for record in result:
-                a = record["n"]["id"]
-                b = record["m"]["id"]
-                if a not in graph:
-                    graph.append(a) 
-                    retrieved_context += f"({record['n']['id']}) {record['n']['text']}   "
-                if b not in graph:
-                    graph.append(b)
-                    retrieved_context += f"({record['m']['id']}) {record['m']['text']}   "
-            return retrieved_context
+            result = list(session.run(cypher_query[index_name], chunk_id=chunk_id))
+            if not result:
+                text = self.get_single_node(chunk_id,index_name)
+                return text
+            else:
+                graph = []
+                retrieved_context = ""
+                for record in result:
+                    a = record["n"]["id"]
+                    b = record["m"]["id"]
+                    if a not in graph:
+                        graph.append(a) 
+                        retrieved_context += f"({record['n']['id']}) {record['n']['text']}   "
+                    if b not in graph:
+                        graph.append(b)
+                        retrieved_context += f"({record['m']['id']}) {record['m']['text']}   "
+                return retrieved_context
+                
         
     def get_appended_chunks(self, top_k_chunks, index_name):
         """
@@ -149,15 +173,16 @@ class Reranker:
 if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
-    sample_query = "What is the limit on equity investments for banks in Singapore?"
-    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
-
+    sample_query = "I have a customer that does not speak English well. What steps should I take when selling them a financial product?"
+    #sample_query = "What is the limit on equity investments for banks in Singapore?"
+    top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
+    print(top_k_chunks)
     graphretriever = GraphDbRetriever(hops=1)
-    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
-
-    reranker = Reranker(top_k=10)
+    appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'mas')
+    print(appended_chunks)
+    #reranker = Reranker(top_k=10)
     #Run the line below to see the output for the whole flow
-    print(reranker.rerank(sample_query,appended_chunks))
+    #print(reranker.rerank(sample_query,appended_chunks))
 
     """
     Some findings:
