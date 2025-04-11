@@ -51,7 +51,7 @@ class VectorDbRetriever:
         return top_k_chunks
 
 
-class GraphDbRetriever:
+class WeightedGraphDbRetriever:
     def __init__(self, hops):
         self.hops = hops
         self.uri = {'ba': os.getenv("NEO4J_URI_BA"),
@@ -170,7 +170,7 @@ class GraphDbRetriever:
         return appended_top_k
 
 
-class Reranker:
+class WeightedReranker:
     def __init__(self, top_k):
         self.top_k = top_k
     
@@ -238,10 +238,10 @@ if __name__ == "__main__":
     sample_query = "How much liquidity do I need to set up a bank? "
     top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'ba')
 
-    graphretriever = GraphDbRetriever(top_k=10, hops=2)
+    graphretriever = WeightedGraphDbRetriever(top_k=10, hops=2)
     appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
-    reranker = Reranker(top_k=5)
+    reranker = WeightedReranker(top_k=5)
     #Run the line below to see the output for the whole flow
     print(reranker.rerank(sample_query,appended_chunks))
 

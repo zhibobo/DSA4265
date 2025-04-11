@@ -2,7 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 import openai
-from weighted_vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
+from vectordb_retriever import VectorDbRetriever, GraphDbRetriever, Reranker
 from classify_query import QueryClassifierAgent
 from source_router import SourceRouterAgent
 
@@ -97,7 +97,7 @@ class OutputAgent:
         else:
             return "Error: Unrecognized classification: " + classification
         
-        print(prompt)
+        # print(prompt)
         response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[

@@ -12,9 +12,9 @@ import os
 
 class MASPreprocessor:
     def __init__(self):
-        self.notice_path = "mas_documents/MAS Notice 626 dated 28 March 2024.pdf"
-        self.guideline_path = "mas_documents/Guidelines to MAS Notice 626 March 2024 - Final.pdf"
-        self.fair_dealing_path = "mas_documents/Fair Dealing Guidelines 30 May 2024.pdf"
+        self.notice_path = "mas_data_extraction/mas_documents/MAS Notice 626 dated 28 March 2024.pdf"
+        self.guideline_path = "mas_data_extraction/mas_documents/Guidelines to MAS Notice 626 March 2024 - Final.pdf"
+        self.fair_dealing_path = "mas_data_extraction/mas_documents/Fair Dealing Guidelines 30 May 2024.pdf"
 
     def get_chunks(self) -> List[Dict]:
         chunks_notice = self.chunk_mas_notice(self.notice_path)
