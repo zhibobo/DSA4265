@@ -78,26 +78,31 @@ class Evaluation:
         rank_scores = []
         
         # 'reference_retrieval':['ba-1970-2.1', 'ba-1970-4.2']
-        for ref_id in reference_ids:
-            # Get position_scores 
-            if ref_id in top_k_chunks:
-                position = top_k_chunks.index(ref_id) 
-            else:
-                position = len(top_k_chunks)
-            position_score = (len(top_k_chunks) - position) / len(top_k_chunks)
-            position_scores.append(position_score)
+        if len(top_k_chunks) > 0:
+            for ref_id in reference_ids:
+                # Get position_scores 
+                if ref_id in top_k_chunks:
+                    position = top_k_chunks.index(ref_id) 
+                else:
+                    position = len(top_k_chunks)
+                position_score = (len(top_k_chunks) - position) / len(top_k_chunks) if len(top_k_chunks) > 0 else 0
+                position_scores.append(position_score)
 
-            # Get semantic similarity score between the reference chunk and the retrieved chunk
-            retrieved_chunks_score = [self.get_similarity_score(self.get_text(ref_id), self.get_text(chunk_id)) for chunk_id in top_k_chunks]
-            print('Retrieved chunks similarity score:', retrieved_chunks_score)
+                # Get semantic similarity score between the reference chunk and the retrieved chunk
+                retrieved_chunks_score = [self.get_similarity_score(self.get_text(ref_id), self.get_text(chunk_id)) for chunk_id in top_k_chunks]
+                print('Retrieved chunks similarity score:', retrieved_chunks_score)
 
-            # Store max similarity score (range -1 to 1)
-            max_score = max(retrieved_chunks_score)
-            max_scores.append(max_score)
-            
-            # Evaluate the ranking/order  
-            rank_score = self.get_ranking_score(retrieved_chunks_score)
-            rank_scores.append(rank_score)
+                # Store max similarity score (range -1 to 1)
+                max_score = max(retrieved_chunks_score) 
+                max_scores.append(max_score)
+                
+                # Evaluate the ranking/order  
+                rank_score = self.get_ranking_score(retrieved_chunks_score)
+                rank_scores.append(rank_score)
+        else:
+            position_scores = [0]
+            max_scores = [0]
+            rank_scores = [0]
 
         print('Position scores:', position_scores)
         print('Max scores:', max_scores)
@@ -108,7 +113,7 @@ class Evaluation:
         agg_rank_score = max(rank_scores)
 
         return agg_position_score, agg_max_score, agg_rank_score, position_scores, max_scores, rank_scores
-    
+        
     def get_evaluation(self, query, correct_source, correct_type, reference_retrieval, reference_generation, n_hop, retriever_method):  
         user_query = query
         
@@ -189,9 +194,10 @@ class Evaluation:
             appended_chunks = graphretriever.run_DFS(user_query, top_k_chunks, data_source)
             reranker = Reranker(top_k=5)
 
+        print('Appended chunks:', appended_chunks)
         # Rerank top_k appended chunks 
         reranked_chunks = reranker.rerank(user_query, appended_chunks)
-        print(reranked_chunks)
+        print('Reranked chunks:', reranked_chunks)
         print('Length Reranked chunks:', len(reranked_chunks))
 
         # Extrack reranked chunk ids
@@ -336,7 +342,7 @@ class Evaluation:
 
         print('===================================================')
         print('Weighted Retrieval')
-        print('===================================================/n')
+        print('===================================================')
         df_weighted = self.get_weighted_eval(bfs_best_hop)
         
         df_combined = pd.concat([df_bfs, df_dfs, df_weighted]).reset_index(drop=True)

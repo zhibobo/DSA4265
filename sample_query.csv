@@ -1,2 +1,3 @@
 ,query,correct_source,correct_type,reference_retrieval,reference_generation
 0,What is the minimum capital requirement for a foreign bank that wants to operate in Singapore through a branch?,ba,factual,ba-1970-9.1,A foreign bank must have head office capital funds of at least the equivalent of  $200 million to operate in Singapore through a branch.
+1,"If complaints spike after a fee revision, how should senior management use this information to review product practices?",mas,reasoning,mas-fair-dealing-4.5.1,"If customer complaints increase following a fee revision, senior management should proactively review product practices in accordance with the Monetary Authority of Singapore (MAS) Fair Dealing Guidelines."
