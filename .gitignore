@@ -1,1 +1,5 @@
 .env
+venv
+hans_queries.csv
+run_evaluation.py
+evaluation_output.csv
