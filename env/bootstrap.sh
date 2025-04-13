@@ -43,15 +43,15 @@ install_conda_and_create_env() {
         exit 1
     fi
 
-    # If the "proj_DSA4265" environment exists, update it; otherwise, create it.
-    if conda env list | grep -q "^proj_DSA4265"; then
-        echo "Conda environment 'proj_DSA4265' already exists. Updating it..."
-        conda activate proj_DSA4265
+    # If the "dsa2465" environment exists, update it; otherwise, create it.
+    if conda env list | grep -q "^dsa2465"; then
+        echo "Conda environment 'dsa2465' already exists. Updating it..."
+        conda activate dsa2465
         conda env update -f environment.yaml 
     else
-        echo "Creating Conda environment 'proj_DSA4265'..."
-        conda create --name proj_DSA4265 python=3.9 -y
-        conda activate proj_DSA4265
+        echo "Creating Conda environment 'dsa2465'..."
+        conda create --name dsa2465 python=3.9 -y
+        conda activate dsa2465
         conda env create -f environment.yaml
 
     fi
@@ -61,4 +61,4 @@ install_conda_and_create_env() {
 install_conda_and_create_env
 
 # Register the IPython kernel for Jupyter
-ipython kernel install --user --name=proj_DSA4265 --display-name "(proj_DSA4265)"
+ipython kernel install --user --name=dsa2465 --display-name "(dsa2465)"
