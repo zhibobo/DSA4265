@@ -174,13 +174,12 @@ if __name__ == "__main__":
     vectorretriever = VectorDbRetriever(top_k=10)
 
     sample_query = "I have a customer that does not speak English well. What steps should I take when selling them a financial product?"
-    #sample_query = "What is the limit on equity investments for banks in Singapore?"
     top_k_chunks = vectorretriever.get_top_k_chunks(sample_query, 'mas')
-    print(top_k_chunks)
+    
     graphretriever = GraphDbRetriever(hops=1)
     appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'mas')
-    print(appended_chunks)
-    #reranker = Reranker(top_k=10)
+    
+    reranker = Reranker(top_k=10)
     #Run the line below to see the output for the whole flow
     #print(reranker.rerank(sample_query,appended_chunks))
 

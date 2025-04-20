@@ -191,17 +191,30 @@ class DFSRetriever:
         self.path_storage = []
     
     def initiate_path_storage(self, top_k_chunks):
+        """
+        Initialises the data structure to store DFS chain of nodes
+        """
         for chunk_id in top_k_chunks:
             self.path_storage.append(ChunkPath(root_id = chunk_id,
                                             depth = self.path_length))
             
     def initiate_root_chunk(self, top_k_chunks, index_name):
+        """
+        Set root nodes as the top k chunks retrieved from the vectorDB 
+        """
         for i in range(len(top_k_chunks)):
             id, text = self.retriever.get_single_node(top_k_chunks[i], index_name)
             self.path_storage[i].add_root_chunk(id,text)
         
     #remove root chunk + rerank
     def get_next_seq(self, query, nearest_neighbours):
+        """
+        Determines the next node in the the chain based on highest sementic score after reranking
+
+        :query: User Query string
+        :nearest_neighbours: list of the all neighbouring nodes and their document chunk string
+        :return: list of all the next node in the sequence for each respective chain.
+        """
         next_k_chunks = []
         for i in range(len(nearest_neighbours)):
             neighbours = nearest_neighbours[i].split("   ")[1:-1]
@@ -224,6 +237,9 @@ class DFSRetriever:
         return next_k_chunks
     
     def get_appended_chunks_dfs(self):
+        """
+        Appends all the node's document string in a single DFS chain. Returns a list of the appended strings for each respective chain.
+        """
         appended_chunks_df = []
         for path in self.path_storage:
             id = path.path_ids
@@ -235,6 +251,14 @@ class DFSRetriever:
         return appended_chunks_df
 
     def run_DFS(self, query, top_k_chunks, index_name):
+        """
+        Main function to run the DFS algorithm
+
+        :query: User query string
+        :top_k_chunks: List of the top k chunks retreived from the vectordb
+        :index_name: Document type that we are retrieving from
+        :return: List of appended documents after DFS
+        """
         self.initiate_path_storage(top_k_chunks)
 
         self.initiate_root_chunk(top_k_chunks, index_name)
@@ -258,9 +282,6 @@ if __name__ == "__main__":
 
     dfsretriever = DFSRetriever(path_length=1)
     appended_chunks_dfs = dfsretriever.run_DFS(sample_query,top_k_chunks,'ba')
-    
-    #graphretriever = GraphDbRetriever(hops=1)
-    #appended_chunks = graphretriever.get_appended_chunks(top_k_chunks, 'ba')
 
     reranker = Reranker(top_k=5)
     #Run the line below to see the output for the whole flow
